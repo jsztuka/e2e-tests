@@ -50,7 +50,7 @@ var _ = framework.IntegrationServiceSuiteDescribe("Integration Service E2E tests
 			Expect(err).NotTo(HaveOccurred())
 			testNamespace = f.UserNamespace
 
-			applicationName = createApp(*f, testNamespace)
+			applicationName = createApp(*f, testNamespace, "")
 			originalComponent, componentName, pacBranchName, componentBaseBranchName = createComponent(*f, testNamespace, applicationName, componentRepoNameForGeneralIntegration, componentGitSourceURLForGeneralIntegration)
 
 			integrationTestScenario, err = f.AsKubeAdmin.IntegrationController.CreateIntegrationTestScenario("", applicationName, testNamespace, gitURL, revision, pathInRepoPass, []string{"application"})
@@ -241,7 +241,7 @@ var _ = framework.IntegrationServiceSuiteDescribe("Integration Service E2E tests
 			Expect(err).NotTo(HaveOccurred())
 			testNamespace = f.UserNamespace
 
-			applicationName = createApp(*f, testNamespace)
+			applicationName = createApp(*f, testNamespace, "")
 			originalComponent, componentName, pacBranchName, componentBaseBranchName = createComponent(*f, testNamespace, applicationName, componentRepoNameForGeneralIntegration, componentGitSourceURLForGeneralIntegration)
 
 			integrationTestScenario, err = f.AsKubeAdmin.IntegrationController.CreateIntegrationTestScenario("", applicationName, testNamespace, gitURL, revision, pathInRepoFail, []string{"pull_request"})
@@ -426,8 +426,12 @@ var _ = framework.IntegrationServiceSuiteDescribe("Integration Service E2E tests
 	})
 })
 
-func createApp(f framework.Framework, testNamespace string) string {
-	applicationName := fmt.Sprintf("integ-app-%s", util.GenerateRandomString(4))
+func createApp(f framework.Framework, testNamespace, name string) string {
+	applicationName := name
+
+	if name == "" {
+		applicationName = fmt.Sprintf("integ-app-%s", util.GenerateRandomString(4))
+	}
 
 	_, err := f.AsKubeAdmin.HasController.CreateApplication(applicationName, testNamespace)
 	Expect(err).NotTo(HaveOccurred())
@@ -465,11 +469,11 @@ func createComponent(f framework.Framework, testNamespace, applicationName, comp
 	return originalComponent, componentName, pacBranchName, componentBaseBranchName
 }
 
-func createComponentWithCustomBranch(f framework.Framework, testNamespace, applicationName, componentRepoName, componentRepoURL string, toBranchName string, contextDir string) (*appstudioApi.Component, string, string, string) {
-	componentName := fmt.Sprintf("%s-%s", "test-component-pac", util.GenerateRandomString(6))
+func createComponentWithCustomBranch(f framework.Framework, testNamespace, applicationName, myComponentName, componentRepoName, componentRepoURL, toBranchName, contextDir string) (*appstudioApi.Component, string, string, string) {
+	componentName := myComponentName
 	fromBranchName := "love-triangle"
 
-	if contextDir == "go-component/docker" {
+	if contextDir == "go-component" {
 		err := f.AsKubeAdmin.CommonController.Github.CreateRef(componentRepoName, componentDefaultBranch, componentGroupRevision, toBranchName)
 		Expect(err).ShouldNot(HaveOccurred())
 	}

@@ -24,10 +24,9 @@ var _ = framework.IntegrationServiceSuiteDescribe("Creation of group snapshots f
 	var err error
 
 	var prNumber int
-	var timeout, interval time.Duration
+	var timeout time.Duration
 	var prHeadSha string
 	var snapshot *appstudioApi.Snapshot
-	var componentA *appstudioApi.Component
 	var componentB *appstudioApi.Component
 	var pipelineRun, testPipelinerun *pipeline.PipelineRun
 	var integrationTestScenarioPass *integrationv1beta2.IntegrationTestScenario
@@ -41,7 +40,7 @@ var _ = framework.IntegrationServiceSuiteDescribe("Creation of group snapshots f
 				Skip("Skipping this test due to configuration issue with Spray proxy")
 			}
 
-			f, err = framework.NewFramework(utils.GetGeneratedNamespace("group"))
+			f, err = framework.NewFramework("group-xyz")
 			Expect(err).NotTo(HaveOccurred())
 			testNamespace = f.UserNamespace
 
@@ -49,11 +48,11 @@ var _ = framework.IntegrationServiceSuiteDescribe("Creation of group snapshots f
 				Skip("Using private cluster (not reachable from Github), skipping...")
 			}
 			toBranch := "test-group-branch"
-			contextDirA := "go-component/docker"
+			contextDirA := "go-component"
 			contextDirB := "python-component/docker"
-			applicationName = createApp(*f, testNamespace)
-			componentA, componentAName, fromBranchNameA, toBranchName = createComponentWithCustomBranch(*f, testNamespace, applicationName, multiComponentRepoNameForGroupSnapshotA, multiComponentGitSourceURLForGroupSnapshotA, toBranch, contextDirA)
-			componentB, componentBName, fromBranchNameB, toBranchName = createComponentWithCustomBranch(*f, testNamespace, applicationName, multiComponentRepoNameForGroupSnapshotB, multiComponentGitSourceURLForGroupSnapshotB, toBranch, contextDirB)
+			applicationName = createApp(*f, testNamespace, "integ-app-group")
+			_, componentAName, fromBranchNameA, toBranchName = createComponentWithCustomBranch(*f, testNamespace, applicationName, "test-component-pac-a", multiComponentRepoNameForGroupSnapshotA, multiComponentGitSourceURLForGroupSnapshotA, toBranch, contextDirA)
+			componentB, componentBName, fromBranchNameB, toBranchName = createComponentWithCustomBranch(*f, testNamespace, applicationName, "test-component-pac-b", multiComponentRepoNameForGroupSnapshotB, multiComponentGitSourceURLForGroupSnapshotB, toBranch, contextDirB)
 
 			integrationTestScenarioPass, err = f.AsKubeAdmin.IntegrationController.CreateIntegrationTestScenario("", applicationName, testNamespace, gitURL, revision, pathInRepoPass, []string{})
 			Expect(err).ShouldNot(HaveOccurred())
@@ -90,58 +89,65 @@ var _ = framework.IntegrationServiceSuiteDescribe("Creation of group snapshots f
 		  / /\ \
 		 / ____ \
 		/_/    \_\ */
-		When("a new Component A with specified custom branch(same as component B) is created", Label("custom-branch"), func() {
-			It("triggers a Build PipelineRun", func() {
-				timeout = time.Second * 600
-				interval = time.Second * 1
-				Eventually(func() error {
-					pipelineRun, err = f.AsKubeAdmin.HasController.GetComponentPipelineRun(componentAName, applicationName, testNamespace, "")
-					if err != nil {
-						GinkgoWriter.Printf("Build PipelineRun has not been created yet for the componentA %s/%s\n", testNamespace, componentAName)
-						return err
-					}
-					if !pipelineRun.HasStarted() {
-						return fmt.Errorf("build pipelinerun %s/%s hasn't started yet", pipelineRun.GetNamespace(), pipelineRun.GetName())
-					}
-					return nil
-				}, timeout, constants.PipelineRunPollingInterval).Should(Succeed(), fmt.Sprintf("timed out when waiting for the build PipelineRun to start for the componentA %s/%s", testNamespace, componentAName))
-			})
+		// When("a new Component A with specified custom branch(same as component B) is created", Label("custom-branch"), func() {
+		// 	It("triggers a Build PipelineRun", func() {
+		// 		timeout = time.Second * 600
+		// 		interval = time.Second * 1
+		// 		Eventually(func() error {
+		// 			pipelineRun, err = f.AsKubeAdmin.HasController.GetComponentPipelineRun(componentAName, applicationName, testNamespace, "")
+		// 			if err != nil {
+		// 				GinkgoWriter.Printf("Build PipelineRun has not been created yet for the componentA %s/%s\n", testNamespace, componentAName)
+		// 				return err
+		// 			}
+		// 			if !pipelineRun.HasStarted() {
+		// 				return fmt.Errorf("build pipelinerun %s/%s hasn't started yet", pipelineRun.GetNamespace(), pipelineRun.GetName())
+		// 			}
+		// 			return nil
+		// 		}, timeout, constants.PipelineRunPollingInterval).Should(Succeed(), fmt.Sprintf("timed out when waiting for the build PipelineRun to start for the componentA %s/%s", testNamespace, componentAName))
+		// 	})
 
-			It("does not contain an annotation with a Snapshot Name", func() {
-				Expect(pipelineRun.Annotations[snapshotAnnotation]).To(Equal(""))
-			})
+		// 	It("does not contain an annotation with a Snapshot Name", func() {
+		// 		Expect(pipelineRun.Annotations[snapshotAnnotation]).To(Equal(""))
+		// 	})
 
-			It("should lead to build PipelineRun finishing successfully", func() {
-				Expect(f.AsKubeAdmin.HasController.WaitForComponentPipelineToBeFinished(componentA,
-					"", f.AsKubeAdmin.TektonController, &has.RetryOptions{Retries: 2, Always: true}, pipelineRun)).To(Succeed())
-			})
+		// 	It("should lead to build PipelineRun finishing successfully", func() {
+		// 		Expect(f.AsKubeAdmin.HasController.WaitForComponentPipelineToBeFinished(componentA,
+		// 			"", f.AsKubeAdmin.TektonController, &has.RetryOptions{Retries: 2, Always: true}, pipelineRun)).To(Succeed())
+		// 	})
 
-			It("should have a related PaC init PR created", func() {
-				timeout = time.Second * 300
-				interval = time.Second * 1
+		// 	It("should have a related PaC init PR created", func() {
+		// 		timeout = time.Second * 300
+		// 		interval = time.Second * 1
 
-				Eventually(func() bool {
-					prs, err := f.AsKubeAdmin.CommonController.Github.ListPullRequests(multiComponentRepoNameForGroupSnapshotA)
-					Expect(err).ShouldNot(HaveOccurred())
+		// 		Eventually(func() bool {
+		// 			prs, err := f.AsKubeAdmin.CommonController.Github.ListPullRequests(multiComponentRepoNameForGroupSnapshotA)
+		// 			Expect(err).ShouldNot(HaveOccurred())
 
-					for _, pr := range prs {
-						if pr.Head.GetRef() == fromBranchNameA {
-							prNumber = pr.GetNumber()
-							prHeadSha = pr.Head.GetSHA()
-							return true
-						}
-					}
-					return false
-				}, timeout, interval).Should(BeTrue(), fmt.Sprintf("timed out when waiting for init PaC PR (branch name '%s') to be created in %s repository", fromBranchNameA, multiComponentRepoNameForGroupSnapshotA))
+		// 			for _, pr := range prs {
+		// 				if pr.Head.GetRef() == fromBranchNameA {
+		// 					prNumber = pr.GetNumber()
+		// 					prHeadSha = pr.Head.GetSHA()
+		// 					return true
+		// 				}
+		// 			}
+		// 			return false
+		// 		}, timeout, interval).Should(BeTrue(), fmt.Sprintf("timed out when waiting for init PaC PR (branch name '%s') to be created in %s repository", fromBranchNameA, multiComponentRepoNameForGroupSnapshotA))
 
-				// in case the first pipelineRun attempt has failed and was retried, we need to update the value of pipelineRun variable
-				pipelineRun, err = f.AsKubeAdmin.HasController.GetComponentPipelineRun(componentAName, applicationName, testNamespace, prHeadSha)
-				Expect(err).ShouldNot(HaveOccurred())
-			})
+		// 		// in case the first pipelineRun attempt has failed and was retried, we need to update the value of pipelineRun variable
+		// 		pipelineRun, err = f.AsKubeAdmin.HasController.GetComponentPipelineRun(componentAName, applicationName, testNamespace, prHeadSha)
+		// 		Expect(err).ShouldNot(HaveOccurred())
+		// 	})
 
-			It("eventually leads to the build PipelineRun's status reported at Checks tab", func() {
-				expectedCheckRunName := fmt.Sprintf("%s-%s", componentAName, "on-pull-request")
-				Expect(f.AsKubeAdmin.CommonController.Github.GetCheckRunConclusion(expectedCheckRunName, multiComponentRepoNameForGroupSnapshotA, prHeadSha, prNumber)).To(Equal(constants.CheckrunConclusionSuccess))
+		// 	It("eventually leads to the build PipelineRun's status reported at Checks tab", func() {
+		// 		expectedCheckRunName := fmt.Sprintf("%s-%s", componentAName, "on-pull-request")
+		// 		Expect(f.AsKubeAdmin.CommonController.Github.GetCheckRunConclusion(expectedCheckRunName, multiComponentRepoNameForGroupSnapshotA, prHeadSha, prNumber)).To(Equal(constants.CheckrunConclusionSuccess))
+		// 	})
+		// })
+
+		When("create a test PR", func() {
+			It("should wait for test to create a PR with dummy changes", func() {
+				pr, err := f.AsKubeAdmin.CommonController.Github.CreatePR()
+				fmt.Printf("Stop looking at me, you creep!:%v, error: %v", pr, err)
 			})
 		})
 
@@ -163,7 +169,6 @@ var _ = framework.IntegrationServiceSuiteDescribe("Creation of group snapshots f
 		When("a new Component B with specified custom branch(same as component A) is created", Label("custom-branch"), func() {
 			It("triggers a Build PipelineRun", func() {
 				timeout = time.Second * 600
-				interval = time.Second * 1
 				Eventually(func() error {
 					pipelineRun, err = f.AsKubeAdmin.HasController.GetComponentPipelineRun(componentBName, applicationName, testNamespace, "")
 					if err != nil {

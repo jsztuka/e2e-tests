@@ -54,7 +54,7 @@ var _ = framework.IntegrationServiceSuiteDescribe("Gitlab Status Reporting of In
 				Skip("Using private cluster (not reachable from Github), skipping...")
 			}
 
-			applicationName = createApp(*f, testNamespace)
+			applicationName = createApp(*f, testNamespace, "")
 
 			integrationTestScenarioPass, err = f.AsKubeAdmin.IntegrationController.CreateIntegrationTestScenario("", applicationName, testNamespace, gitURL, revision, pathInRepoPass, []string{})
 			Expect(err).ShouldNot(HaveOccurred())

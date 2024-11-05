@@ -48,7 +48,7 @@ var _ = framework.IntegrationServiceSuiteDescribe("Status Reporting of Integrati
 				Skip("Using private cluster (not reachable from Github), skipping...")
 			}
 
-			applicationName = createApp(*f, testNamespace)
+			applicationName = createApp(*f, testNamespace, "")
 			component, componentName, pacBranchName, componentBaseBranchName = createComponent(*f, testNamespace, applicationName, componentRepoNameForStatusReporting, componentGitSourceURLForStatusReporting)
 
 			integrationTestScenarioPass, err = f.AsKubeAdmin.IntegrationController.CreateIntegrationTestScenario("", applicationName, testNamespace, gitURL, revision, pathInRepoPass, []string{})

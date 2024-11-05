@@ -45,7 +45,7 @@ var _ = framework.IntegrationServiceSuiteDescribe("Integration Service E2E tests
 			Expect(err).NotTo(HaveOccurred())
 			testNamespace = f.UserNamespace
 
-			applicationName = createApp(*f, testNamespace)
+			applicationName = createApp(*f, testNamespace, "")
 			originalComponent, componentName, pacBranchName, componentBaseBranchName = createComponent(*f, testNamespace, applicationName, componentRepoNameForIntegrationWithEnv, componentGitSourceURLForIntegrationWithEnv)
 			integrationTestScenario, err = f.AsKubeAdmin.IntegrationController.CreateIntegrationTestScenario("", applicationName, testNamespace, gitURL, revision, pathIntegrationPipelineWithEnv, []string{})
 			Expect(err).ShouldNot(HaveOccurred())

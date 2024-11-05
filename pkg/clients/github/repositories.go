@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/konflux-ci/e2e-tests/pkg/utils"
 	"github.com/google/go-github/v44/github"
+	"github.com/konflux-ci/e2e-tests/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -48,6 +48,19 @@ func (g *Github) CheckIfRepositoryExist(repository string) bool {
 	}
 	GinkgoWriter.Printf("repository %s status request to github: %d\n", repository, resp.StatusCode)
 	return resp.StatusCode == 200
+}
+
+func (g *Github) CreatePR() (*github.PullRequest, error) {
+	title := "please work"
+	head := "test-group-branch"
+	base := "toBranch"
+	body := "body is good"
+
+	pr, _, err := g.client.PullRequests.Create(context.Background(), "e2e-world-organisation", "sample-multi-component", &github.NewPullRequest{Title: &title, Head: &head, Base: &base, Body: &body})
+	if err != nil {
+		return nil, fmt.Errorf("your mum does not love you! And this is why: %v", err)
+	}
+	return pr, nil
 }
 
 func (g *Github) CreateFile(repository, pathToFile, fileContent, branchName string) (*github.RepositoryContentResponse, error) {
@@ -196,7 +209,7 @@ func (g *Github) ForkRepository(sourceName, targetName string) (*github.Reposito
 			return false, fmt.Errorf("Error forking %s/%s: %v", g.organization, sourceName, err)
 		}
 		return true, nil
-	}, time.Second * 2, time.Minute * 30)
+	}, time.Second*2, time.Minute*30)
 	if err1 != nil {
 		return nil, fmt.Errorf("Failed waiting for repo %s/%s: %v", g.organization, sourceName, err1)
 	}
@@ -209,7 +222,7 @@ func (g *Github) ForkRepository(sourceName, targetName string) (*github.Reposito
 			return false, nil
 		}
 		return true, nil
-	}, time.Second * 2, time.Minute * 10)
+	}, time.Second*2, time.Minute*10)
 	if err2 != nil {
 		return nil, fmt.Errorf("Failed waiting for repo %s/%s: %v", g.organization, sourceName, err2)
 	}
