@@ -465,15 +465,7 @@ func createComponent(f framework.Framework, testNamespace, applicationName, comp
 	return originalComponent, componentName, pacBranchName, componentBaseBranchName
 }
 
-func createComponentWithCustomBranch(f framework.Framework, testNamespace, applicationName, componentRepoName, componentRepoURL string, toBranchName string, contextDir string) (*appstudioApi.Component, string, string, string) {
-	componentName := fmt.Sprintf("%s-%s", "test-component-pac", util.GenerateRandomString(6))
-	fromBranchName := "love-triangle"
-
-	if contextDir == "go-component/docker" {
-		err := f.AsKubeAdmin.CommonController.Github.CreateRef(componentRepoName, componentDefaultBranch, componentGroupRevision, toBranchName)
-		Expect(err).ShouldNot(HaveOccurred())
-	}
-
+func createComponentWithCustomBranch(f framework.Framework, testNamespace, applicationName, componentName, componentRepoURL string, toBranchName string, contextDir string) *appstudioApi.Component {
 	// get the build pipeline bundle annotation
 	buildPipelineAnnotation := build.GetDockerBuildPipelineBundle()
 
@@ -483,18 +475,19 @@ func createComponentWithCustomBranch(f framework.Framework, testNamespace, appli
 		Source: appstudioApi.ComponentSource{
 			ComponentSourceUnion: appstudioApi.ComponentSourceUnion{
 				GitSource: &appstudioApi.GitSource{
-					URL:      componentRepoURL,
-					Revision: toBranchName,
-					Context:  contextDir,
+					URL:           componentRepoURL,
+					Revision:      toBranchName,
+					Context:       contextDir,
+					DockerfileURL: constants.DockerFilePath,
 				},
 			},
 		},
 	}
 
-	originalComponent, err := f.AsKubeAdmin.HasController.CreateComponent(componentObj, testNamespace, "", "", applicationName, false, utils.MergeMaps(utils.MergeMaps(constants.ComponentPaCRequestAnnotation, constants.ImageControllerAnnotationRequestPublicRepo), buildPipelineAnnotation))
+	originalComponent, err := f.AsKubeAdmin.HasController.CreateComponent(componentObj, testNamespace, "", "", applicationName, true, utils.MergeMaps(utils.MergeMaps(constants.ComponentPaCRequestAnnotation, constants.ImageControllerAnnotationRequestPublicRepo), buildPipelineAnnotation))
 	Expect(err).NotTo(HaveOccurred())
 
-	return originalComponent, componentName, fromBranchName, toBranchName
+	return originalComponent
 }
 
 func cleanup(f framework.Framework, testNamespace, applicationName, componentName string) {
